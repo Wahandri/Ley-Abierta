@@ -1,0 +1,37 @@
+# Environment
+.env
+
+# Data (los JSONL se versionan en repo separado público)
+data/jsonl/
+data/index/
+data/cache/
+
+# Backups
+backup_placsp/
+
+# Logs
+logs/*.log
+
+# Python
+__pycache__/
+.venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

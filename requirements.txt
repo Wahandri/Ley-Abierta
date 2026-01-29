@@ -1,0 +1,15 @@
+# Core HTTP and parsing
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Utilities
+tenacity==8.2.3
+python-dateutil==2.8.2
+tqdm==4.66.1
+
+# LLM and data validation
+openai==1.54.0
+pydantic==2.10.0
+jsonschema==4.23.0
+python-dotenv==1.0.0

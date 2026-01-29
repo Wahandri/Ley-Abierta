@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://elvigilante.org/schemas/documento-publico-v1.schema.json",
+  "title": "DocumentoPublico",
+  "description": "Schema para documentos públicos del BOE traducidos a lenguaje ciudadano",
+  "type": "object",
+  "required": [
+    "id",
+    "source",
+    "type",
+    "title_original",
+    "date_published",
+    "url_oficial",
+    "summary_plain_es",
+    "keywords",
+    "topic_primary",
+    "impact_index",
+    "version",
+    "created_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identificador único estable (formato: source-YYYY-MM-DD-tipo-numero)",
+      "pattern": "^boe-\\d{4}-\\d{2}-\\d{2}-.+$",
+      "examples": ["boe-2026-01-27-real-decreto-0052"]
+    },
+    "source": {
+      "type": "string",
+      "description": "Fuente del documento",
+      "enum": ["BOE"],
+      "default": "BOE"
+    },
+    "type": {
+      "type": "string",
+      "description": "Tipo de norma o documento",
+      "enum": [
+        "ley",
+        "ley_organica",
+        "real_decreto",
+        "real_decreto_ley",
+        "orden",
+        "orden_ministerial",
+        "resolucion",
+        "circular",
+        "instruccion",
+        "acuerdo",
+        "otro"
+      ]
+    },
+    "title_original": {
+      "type": "string",
+      "description": "Título oficial completo tal como aparece en el BOE",
+      "minLength": 10,
+      "maxLength": 500
+    },
+    "date_published": {
+      "type": "string",
+      "description": "Fecha de publicación oficial (ISO 8601)",
+      "format": "date-time"
+    },
+    "url_oficial": {
+      "type": "string",
+      "description": "Enlace permanente al BOE oficial",
+      "format": "uri",
+      "pattern": "^https://www\\.boe\\.es/"
+    },
+    "summary_plain_es": {
+      "type": "string",
+      "description": "Resumen en lenguaje ciudadano (150-300 palabras, sin tecnicismos)",
+      "minLength": 100,
+      "maxLength": 2000
+    },
+    "keywords": {
+      "type": "array",
+      "description": "Palabras clave para búsqueda",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "minItems": 3,
+      "maxItems": 10,
+      "uniqueItems": true
+    },
+    "topic_primary": {
+      "type": "string",
+      "description": "Tema principal del documento",
+      "enum": [
+        "economía",
+        "empleo",
+        "sanidad",
+        "educación",
+        "medio_ambiente",
+        "justicia",
+        "vivienda",
+        "tecnología",
+        "transporte",
+        "seguridad",
+        "cultura",
+        "agricultura",
+        "energía",
+        "otros"
+      ]
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Organismo que aprueba el documento",
+      "examples": [
+        "Ministerio de Hacienda",
+        "Consejo de Ministros",
+        "Congreso de los Diputados"
+      ]
+    },
+    "affects_to": {
+      "type": "array",
+      "description": "A quién afecta el documento",
+      "items": {
+        "type": "string",
+        "enum": [
+          "todos_ciudadanos",
+          "autónomos",
+          "empresas",
+          "funcionarios",
+          "pensionistas",
+          "estudiantes",
+          "familias",
+          "sector_sanitario",
+          "sector_educativo",
+          "sector_agrícola",
+          "sector_tecnológico",
+          "sector_industrial",
+          "otros"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "impact_index": {
+      "type": "object",
+      "description": "Índice de impacto ciudadano (0-100) con explicación",
+      "required": ["score", "reason"],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "description": "Puntuación de impacto (0=bajo, 100=alto impacto masivo)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reason": {
+          "type": "string",
+          "description": "Justificación breve del score",
+          "minLength": 20,
+          "maxLength": 300
+        }
+      }
+    },
+    "changes_summary": {
+      "type": "string",
+      "description": "Qué cambia respecto a la normativa anterior (si aplica, lenguaje claro)",
+      "maxLength": 1000
+    },
+    "entry_into_force": {
+      "type": "string",
+      "description": "Fecha de entrada en vigor (ISO 8601)",
+      "format": "date-time"
+    },
+    "transparency_notes": {
+      "type": "string",
+      "description": "Por qué es importante que la ciudadanía lo sepa (tono pedagógico)",
+      "minLength": 50,
+      "maxLength": 1000
+    },
+    "version": {
+      "type": "string",
+      "description": "Versión del schema del documento",
+      "pattern": "^\\d+\\.\\d+$",
+      "default": "1.0"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Timestamp de creación del registro (ISO 8601)",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "Timestamp de última actualización (ISO 8601)",
+      "format": "date-time"
+    }
+  }
+}
