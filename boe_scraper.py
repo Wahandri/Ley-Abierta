@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
+import pdfplumber
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
@@ -28,7 +29,9 @@ USER_AGENT = "ElVigilante/1.0 (Transparencia Ciudadana; +https://github.com/elvi
 TIMEOUT = 30
 DATA_DIR = Path("./data")
 JSONL_DIR = DATA_DIR / "jsonl"
+PDF_DIR = DATA_DIR / "pdfs"
 LOGS_DIR = Path("./logs")
+
 
 # Document types we prioritize (Sección I - Disposiciones generales)
 PRIORITY_TYPES = [
@@ -57,9 +60,10 @@ logger = logging.getLogger(__name__)
 # === UTILITY FUNCTIONS ===
 def ensure_directories():
     """Create required directories if they don't exist"""
-    for directory in [JSONL_DIR, LOGS_DIR]:
+    for directory in [JSONL_DIR, LOGS_DIR, PDF_DIR]:
         directory.mkdir(parents=True, exist_ok=True)
     logger.info("✓ Directories verified")
+
 
 
 def normalize_document_type(raw_type: str) -> str:
@@ -159,6 +163,87 @@ def calculate_impact_heuristic(doc_type: str, title: str) -> Dict[str, any]:
         "score": score,
         "reason": reason
     }
+
+
+# === PDF DOWNLOAD AND TEXT EXTRACTION ===
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+def download_pdf(url: str, doc_id: str, date: datetime) -> Optional[Path]:
+    """
+    Download PDF from BOE
+    Returns path to downloaded PDF or None if failed
+    """
+    try:
+        # Create directory structure: data/pdfs/YYYY/MM/
+        year = date.strftime("%Y")
+        month = date.strftime("%m")
+        pdf_dir = PDF_DIR / year / month
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate safe filename
+        filename = f"{doc_id}.pdf"
+        filepath = pdf_dir / filename
+        
+        # Skip if already downloaded
+        if filepath.exists():
+            logger.debug(f"PDF already exists: {filepath}")
+            return filepath
+        
+        # Download PDF
+        logger.info(f"Downloading PDF: {url}")
+        response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT, stream=True)
+        response.raise_for_status()
+        
+        # Save to file
+        with open(filepath, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        logger.info(f"✓ Downloaded: {filepath} ({filepath.stat().st_size / 1024:.1f} KB)")
+        return filepath
+        
+    except Exception as e:
+        logger.error(f"Failed to download PDF {url}: {e}")
+        return None
+
+
+def extract_text_from_pdf(pdf_path: Path, max_pages: int = 20) -> str:
+    """
+    Extract text from PDF using pdfplumber
+    Limits to first max_pages to avoid processing huge documents
+    Returns cleaned text
+    """
+    try:
+        text_parts = []
+        
+        with pdfplumber.open(pdf_path) as pdf:
+            # Limit pages to avoid huge documents
+            num_pages = min(len(pdf.pages), max_pages)
+            
+            logger.info(f"Extracting text from {pdf_path.name} ({num_pages}/{len(pdf.pages)} pages)")
+            
+            for i, page in enumerate(pdf.pages[:num_pages]):
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+                except Exception as e:
+                    logger.warning(f"Failed to extract text from page {i+1}: {e}")
+                    continue
+        
+        # Join and clean text
+        full_text = "\n\n".join(text_parts)
+        
+        # Basic cleaning: remove excessive whitespace
+        full_text = re.sub(r'\n{3,}', '\n\n', full_text)  # Max 2 consecutive newlines
+        full_text = re.sub(r' {2,}', ' ', full_text)       # Max 1 space
+        full_text = full_text.strip()
+        
+        logger.info(f"✓ Extracted {len(full_text)} characters from {pdf_path.name}")
+        return full_text
+        
+    except Exception as e:
+        logger.error(f"Failed to extract text from {pdf_path}: {e}")
+        return ""
 
 
 # === BOE SCRAPING FUNCTIONS ===
@@ -390,9 +475,25 @@ def main():
         documents = documents[:args.limit]
         logger.info(f"Limited to {len(documents)} documents")
     
-    # Enrich with basic metadata
+    # Process documents: download PDFs, extract text, enrich metadata
     enriched_docs = []
-    for doc in tqdm(documents, desc="Enriching metadata"):
+    for doc in tqdm(documents, desc="Processing documents"):
+        # 1. Download PDF
+        pdf_path = download_pdf(doc['url_oficial'], doc['id'], target_date)
+        if pdf_path:
+            doc['pdf_path'] = str(pdf_path.relative_to(DATA_DIR))
+            
+            # 2. Extract text from PDF
+            full_text = extract_text_from_pdf(pdf_path)
+            doc['full_text'] = full_text
+            doc['text_length'] = len(full_text)
+        else:
+            doc['pdf_path'] = ""
+            doc['full_text'] = ""
+            doc['text_length'] = 0
+            logger.warning(f"Skipping text extraction for {doc['id']} (PDF download failed)")
+        
+        # 3. Enrich with basic heuristic metadata
         enriched_doc = enrich_metadata_basic(doc)
         enriched_docs.append(enriched_doc)
     
@@ -400,13 +501,20 @@ def main():
     if args.dry_run:
         logger.info("\n=== DRY-RUN: Documents (first 3) ===")
         for doc in enriched_docs[:3]:
-            print(json.dumps(doc, indent=2, ensure_ascii=False))
+            # Don't print full_text in dry run (too long)
+            doc_copy = doc.copy()
+            if 'full_text' in doc_copy:
+                doc_copy['full_text'] = f"[{doc_copy['text_length']} characters]"
+            print(json.dumps(doc_copy, indent=2, ensure_ascii=False))
     else:
         save_to_jsonl(enriched_docs, target_date)
     
     # Summary
     logger.info("\n=== SUMMARY ===")
     logger.info(f"Documents processed: {len(enriched_docs)}")
+    logger.info(f"PDFs downloaded: {sum(1 for d in enriched_docs if d.get('pdf_path'))}")
+    logger.info(f"Text extracted: {sum(1 for d in enriched_docs if d.get('text_length', 0) > 0)}")
+
     logger.info(f"Date: {target_date.strftime('%Y-%m-%d')}")
     
     # Topic distribution

@@ -91,9 +91,10 @@ def save_to_cache(cache_key: str, prompt: str, response: str):
 
 # === LLM CALLS ===
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=4, max=30))
-def call_llm(system_prompt: str, user_prompt: str, max_tokens: int = LLM_MAX_TOKENS) -> str:
+def call_llm_json(system_prompt: str, user_prompt: str, max_tokens: int = 1000) -> Dict:
     """
-    Call OpenAI API with retry logic
+    Call OpenAI API with strict JSON response format
+    Returns parsed JSON dict
     """
     logger.debug(f"Calling LLM ({LLM_MODEL}) with {len(user_prompt)} chars")
     
@@ -105,259 +106,115 @@ def call_llm(system_prompt: str, user_prompt: str, max_tokens: int = LLM_MAX_TOK
         ],
         max_tokens=max_tokens,
         temperature=LLM_TEMPERATURE,
+        response_format={"type": "json_object"},  # Force JSON output
     )
     
     content = response.choices[0].message.content.strip()
     logger.debug(f"LLM response: {len(content)} chars")
     
-    return content
-
-
-# === CONTENT GENERATION FUNCTIONS ===
-def generate_plain_summary(title: str, boe_text: str = "", max_chars: int = 2000) -> str:
-    """
-    Generate citizen-friendly summary from BOE title (and optional text excerpt)
-    """
-    system_prompt = """Eres un traductor de lenguaje jurídico a lenguaje ciudadano para el proyecto 'El Vigilante'.
-
-Tu tarea es explicar leyes, decretos y normativas en español claro y accesible.
-
-REGLAS ESTRICTAS:
-- Usa segunda persona ("te afecta si...", "podrás deducir...")
-- Evita tecnicismos jurídicos innecesarios (no uses "apartado", "disposición", "literal", etc.)
-- Sé conciso: 150-300 palabras máximo
-- Explica el impacto real en la vida de las personas
-- Si hay cambios, indica qué cambia respecto a antes
-- Tono pedagógico, no alarmista ni sensacionalista
-- No emitas juicios políticos"""
-
-    # Limit boe_text to avoid token overflow
-    boe_excerpt = boe_text[:max_chars] if boe_text else ""
-    
-    user_prompt = f"""Documento del BOE:
-
-TÍTULO: {title}
-
-{f"EXTRACTO: {boe_excerpt}" if boe_excerpt else ""}
-
-Genera un resumen en lenguaje ciudadano que explique:
-1. ¿Qué aprueba este documento?
-2. ¿A quién afecta?
-3. ¿Qué cambia o qué novedad trae?
-
-Resumen (150-300 palabras):"""
-
-    # Check cache
-    cache_key = get_cache_key(user_prompt)
-    cached_response = load_from_cache(cache_key)
-    if cached_response:
-        return cached_response
-    
-    # Call LLM
-    summary = call_llm(system_prompt, user_prompt, max_tokens=600)
-    
-    # Save to cache
-    save_to_cache(cache_key, user_prompt, summary)
-    
-    return summary
-
-
-def extract_keywords(title: str, summary: str) -> List[str]:
-    """
-    Extract 5-8 relevant keywords from title and summary
-    """
-    system_prompt = """Eres un clasificador de contenido para el proyecto 'El Vigilante'.
-Extrae las 5-8 palabras clave más relevantes de documentos del BOE.
-
-REGLAS:
-- Solo palabras o frases cortas (1-3 palabras)
-- En minúsculas
-- Relevantes para búsqueda ciudadana (no jerga jurídica)
-- Formato: lista JSON de strings"""
-
-    user_prompt = f"""Documento:
-
-TÍTULO: {title}
-
-RESUMEN: {summary[:500]}
-
-Extrae 5-8 keywords en formato JSON:
-["keyword1", "keyword2", ...]"""
-
-    # Check cache
-    cache_key = get_cache_key(user_prompt)
-    cached_response = load_from_cache(cache_key)
-    if cached_response:
-        try:
-            return json.loads(cached_response)
-        except:
-            pass
-    
-    # Call LLM
-    response = call_llm(system_prompt, user_prompt, max_tokens=100)
-    
     # Parse JSON
     try:
-        # Extract JSON array from response
-        json_start = response.find("[")
-        json_end = response.rfind("]") + 1
-        if json_start != -1 and json_end > json_start:
-            keywords = json.loads(response[json_start:json_end])
-            # Save to cache
-            save_to_cache(cache_key, user_prompt, json.dumps(keywords))
-            return keywords[:8]  # Max 8
-    except Exception as e:
-        logger.warning(f"Failed to parse keywords JSON: {e}")
-    
-    # Fallback: simple word extraction
-    return [title.split()[0].lower(), "boe", "normativa"]
-
-
-def determine_affected_groups(summary: str, title: str = "") -> List[str]:
-    """
-    Identify affected groups (autónomos, empresas, etc.)
-    """
-    system_prompt = """Eres un clasificador para 'El Vigilante'.
-Identifica a quién afecta un documento del BOE.
-
-GRUPOS POSIBLES:
-- todos_ciudadanos
-- autónomos
-- empresas
-- funcionarios
-- pensionistas
-- estudiantes
-- familias
-- sector_sanitario
-- sector_educativo
-- sector_agrícola
-- sector_tecnológico
-- sector_industrial
-- otros
-
-REGLAS:
-- Devuelve 1-3 grupos más relevantes
-- Formato: lista JSON de strings"""
-
-    user_prompt = f"""Documento:
-
-TÍTULO: {title}
-
-RESUMEN: {summary[:500]}
-
-¿A quién afecta principalmente? Responde en formato JSON:
-["grupo1", "grupo2"]"""
-
-    # Check cache
-    cache_key = get_cache_key(user_prompt)
-    cached_response = load_from_cache(cache_key)
-    if cached_response:
-        try:
-            return json.loads(cached_response)
-        except:
-            pass
-    
-    # Call LLM
-    response = call_llm(system_prompt, user_prompt, max_tokens=50)
-    
-    # Parse JSON
-    try:
-        json_start = response.find("[")
-        json_end = response.rfind("]") + 1
-        if json_start != -1 and json_end > json_start:
-            groups = json.loads(response[json_start:json_end])
-            # Save to cache
-            save_to_cache(cache_key, user_prompt, json.dumps(groups))
-            return groups[:3]  # Max 3
-    except Exception as e:
-        logger.warning(f"Failed to parse affected groups JSON: {e}")
-    
-    # Fallback
-    return ["todos_ciudadanos"]
-
-
-def explain_transparency_importance(title: str, summary: str) -> str:
-    """
-    Generate transparency_notes: why citizens should know about this
-    """
-    system_prompt = """Eres un educador cívico para 'El Vigilante'.
-Explica en 1-2 frases POR QUÉ es importante que la ciudadanía conozca este documento del BOE.
-
-REGLAS:
-- Tono pedagógico, no alarmista
-- Enfócate en el impacto práctico en sus vidas
-- Máximo 100 palabras"""
-
-    user_prompt = f"""Documento:
-
-TÍTULO: {title}
-
-RESUMEN: {summary[:400]}
-
-¿Por qué es importante que los ciudadanos sepan esto?"""
-
-    # Check cache
-    cache_key = get_cache_key(user_prompt)
-    cached_response = load_from_cache(cache_key)
-    if cached_response:
-        return cached_response
-    
-    # Call LLM
-    explanation = call_llm(system_prompt, user_prompt, max_tokens=150)
-    
-    # Save to cache
-    save_to_cache(cache_key, user_prompt, explanation)
-    
-    return explanation
+        return json.loads(content)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM JSON response: {e}")
+        logger.error(f"Response was: {content[:500]}...")
+        raise
 
 
 # === MAIN PROCESSING FUNCTION ===
 def process_document_with_llm(doc: Dict) -> Dict:
     """
     Process a single document with LLM to generate all citizen-oriented fields
+    Uses full document text if available, falls back to title only
     Updates the document dict in-place and returns it
     """
     logger.info(f"Processing document with LLM: {doc.get('id', 'unknown')}")
     
     title = doc.get("title_original", "")
+    full_text = doc.get("full_text", "")
     
-    # 1. Generate plain summary
+    # Truncate text to avoid token limits (~8000 chars = ~2000 tokens)
+    max_text_chars = 8000
+    text_excerpt = full_text[:max_text_chars] if full_text else ""
+    
+    # Build comprehensive prompt
+    system_prompt = """Eres un experto en derecho administrativo español que analiza documentos del BOE para hacerlos accesibles al público general.
+
+Tu trabajo es leer documentos oficiales y generar un análisis estructurado en JSON.
+
+IMPORTANTE: Debes responder ÚNICAMENTE con un objeto JSON válido.
+NO incluyas markdown (```json), explicaciones, ni texto antes o después del JSON.
+El JSON debe tener exactamente esta estructura:
+
+{
+  "summary_plain_es": "Resumen en español sencillo (150-300 palabras). Usa segunda persona. Explica qué aprueba, a quién afecta, y qué cambia.",
+  "keywords": ["palabra1", "palabra2", ...],
+  "affects_to": ["grupo1", "grupo2", ...],
+  "transparency_notes": "1-2 frases explicando por qué es importante que los ciudadanos conozcan esto"
+}
+
+GRUPOS VÁLIDOS para affects_to: todos_ciudadanos, autónomos, empresas, funcionarios, pensionistas, estudiantes, familias, sector_sanitario, sector_educativo, sector_agrícola, sector_tecnológico, sector_industrial, otros
+
+REGLAS:
+- summary_plain_es: 150-300 palabras, segunda persona, sin tecnicismos innecesarios
+- keywords: 5-8 palabras o frases cortas, minúsculas, relevantes para búsqueda
+- affects_to: 1-3 grupos más relevantes
+- transparency_notes: máximo 100 palabras, tono pedagógico"""
+
+    if text_excerpt:
+        content_section = f"""CONTENIDO COMPLETO (primeros {max_text_chars} caracteres):
+{text_excerpt}"""
+    else:
+        content_section = "[No se pudo extraer el contenido del PDF]"
+    
+    user_prompt = f"""Analiza el siguiente documento del BOE:
+
+TÍTULO: {title}
+
+{content_section}
+
+Responde SOLO con el JSON (sin markdown, sin explicaciones):"""
+
+    # Check cache
+    cache_key = get_cache_key(user_prompt)
+    cached_response = load_from_cache(cache_key)
+    if cached_response:
+        try:
+            result = json.loads(cached_response)
+            logger.info("✓ Using cached LLM response")
+            # Update document
+            doc["summary_plain_es"] = result.get("summary_plain_es", "")
+            doc["keywords"] = result.get("keywords", [])
+            doc["affects_to"] = result.get("affects_to", ["todos_ciudadanos"])
+            doc["transparency_notes"] = result.get("transparency_notes", "")
+            doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+            return doc
+        except Exception as e:
+            logger.warning(f"Cache parse error: {e}")
+    
+    # Call LLM
     try:
-        summary = generate_plain_summary(title)
-        doc["summary_plain_es"] = summary
+        result = call_llm_json(system_prompt, user_prompt, max_tokens=1000)
+        
+        # Validate and update document
+        doc["summary_plain_es"] = result.get("summary_plain_es", f"[Error: no summary] {title}")
+        doc["keywords"] = result.get("keywords", ["boe", doc.get("type", "documento")])
+        doc["affects_to"] = result.get("affects_to", ["todos_ciudadanos"])
+        doc["transparency_notes"] = result.get("transparency_notes", "Documento oficial del BOE.")
+        doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Save to cache
+        save_to_cache(cache_key, user_prompt, json.dumps(result))
+        
+        logger.info(f"✓ Document processed: {doc['id']}")
+        
     except Exception as e:
-        logger.error(f"Failed to generate summary: {e}")
+        logger.error(f"Failed to process document with LLM: {e}")
         doc["summary_plain_es"] = f"[Error al procesar] {title}"
-        return doc
-    
-    # 2. Extract keywords
-    try:
-        keywords = extract_keywords(title, doc["summary_plain_es"])
-        doc["keywords"] = keywords
-    except Exception as e:
-        logger.error(f"Failed to extract keywords: {e}")
         doc["keywords"] = ["boe", doc.get("type", "documento")]
-    
-    # 3. Determine affected groups
-    try:
-        affected = determine_affected_groups(doc["summary_plain_es"], title)
-        doc["affects_to"] = affected
-    except Exception as e:
-        logger.error(f"Failed to determine affected groups: {e}")
         doc["affects_to"] = ["todos_ciudadanos"]
-    
-    # 4. Explain transparency importance
-    try:
-        transparency = explain_transparency_importance(title, doc["summary_plain_es"])
-        doc["transparency_notes"] = transparency
-    except Exception as e:
-        logger.error(f"Failed to generate transparency notes: {e}")
-        doc["transparency_notes"] = "Documento oficial del BOE que puede afectar a la ciudadanía."
-    
-    # Update timestamp
-    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
-    logger.info(f"✓ Document processed: {doc['id']}")
+        doc["transparency_notes"] = "Documento oficial del BOE."
+        doc["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     return doc
 
