@@ -1,364 +1,312 @@
-# El Vigilante - Pipeline BOE España
+# El Vigilante - BOE Scraper
 
-**Traductor ciudadano del Boletín Oficial del Estado**
-
-## 🎯 ¿Qué es El Vigilante?
-
-El Vigilante es un proyecto cívico que **traduce las leyes y decisiones públicas del BOE a lenguaje claro** para que cualquier persona pueda entender qué se aprueba cada día y cómo le afecta.
-
-**No es**:
-- ❌ Un cazador de corrupción sensacionalista
-- ❌ Una herramienta política partidista
-- ❌ Un recopilatorio de contratación pública (eso viene en Fase 3)
-
-**Es**:
-- ✅ Un traductor pedagógico: del lenguaje jurídico al lenguaje ciudadano
-- ✅ Una fuente de transparencia radical pero explicada
-- ✅ Un dataset público, auditable y versionado
+**Sistema automatizado para traducir documentos oficiales del BOE a lenguaje claro y accesible**
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## 📖 Descripción
 
-Este repositorio contiene el **pipeline de datos** que:
+El Vigilante es una herramienta que procesa automáticamente los documentos publicados en el Boletín Oficial del Estado (BOE) y los transforma en contenido comprensible para cualquier ciudadano.
 
-1. **Scrape** el BOE oficial diariamente
-2. **Extrae** metadatos de leyes, decretos y órdenes ministeriales
-3. **Procesa** con LLM (OpenAI) para generar resúmenes ciudadanos
-4. **Valida** la calidad del contenido generado
-5. **Genera** índices JSON optimizados para consumir en la web
+### El Problema
 
-**Stack tecnológico**:
-- Python 3.11+
-- BeautifulSoup (scraping BOE)
-- OpenAI API (GPT-4o-mini para traducción ciudadana)
-- JSON Schema + Pydantic (validación)
-- JSONL (almacenamiento histórico versionado)
+Los documentos oficiales del BOE utilizan lenguaje técnico-jurídico que dificulta su comprensión para la mayoría de la población. Esto genera:
+
+- **Desinformación**: La ciudadanía no entiende qué se aprueba ni cómo le afecta
+- **Falta de acceso**: El lenguaje burocrático actúa como barrera de entrada
+- **Desincentivo cívico**: La complejidad desalienta el seguimiento de asuntos públicos
+
+### La Solución
+
+Este proyecto automatiza tres procesos clave:
+
+1. **Descarga**: Obtiene documentos oficiales del BOE diariamente
+2. **Extracción**: Procesa los PDFs y extrae su contenido en texto plano
+3. **Traducción**: Utiliza IA para generar resúmenes en lenguaje ciudadano
+
+**Resultado**: JSON estructurado listo para mostrar en una web, app móvil o cualquier interfaz.
 
 ---
 
-## 📦 Instalación
+## 🎯 Para Quién Es Este Proyecto
 
-### Requisitos
+### Usuarios Finales
+- Ciudadanos que quieren entender las leyes sin ser abogados
+- Autónomos y empresarios que necesitan conocer cambios normativos
+- Estudiantes e investigadores de políticas públicas
 
+### Desarrolladores
+- Implementadores de portales de transparencia
+- Creadores de apps cívicas
+- Periodistas de datos
+
+### Organizaciones
+- ONGs de transparencia y participación ciudadana
+- Administraciones públicas que quieren mejorar la comunicación
+- Medios de comunicación
+
+---
+
+## ✨ Características Principales
+
+### 🤖 Procesamiento Automatizado
+- Descarga automática de documentos del BOE
+- Extracción de texto desde PDFs (hasta 20 páginas por documento)
+- Procesamiento con IA (OpenAI) para generar contenido comprensible
+
+### 📝 Contenido Generado
+Cada documento se enriquece con:
+- **Resumen en español sencillo** (150-300 palabras)
+- **Palabras clave** para facilitar búsquedas
+- **Grupos afectados** (autónomos, empresas, estudiantes, etc.)
+- **Clasificación por tema** (economía, sanidad, educación, etc.)
+- **Notas de transparencia**: Por qué es importante conocer este documento
+
+### 🔒 Calidad y Trazabilidad
+- Validación automática de datos generados
+- Enlace siempre a la fuente oficial del BOE
+- Versionado de datos para auditoría
+- Caché de respuestas para evitar reprocesamiento
+
+---
+
+## 🚀 Instalación Rápida
+
+### Requisitos Previos
 - Python 3.11 o superior
-- Cuenta de OpenAI con API key (costo estimado: $5-10 USD/mes)
-- Conexión a Internet
+- Cuenta de OpenAI con API key ([obtener aquí](https://platform.openai.com/api-keys))
+- 4GB de espacio en disco (para PDFs y datos)
 
-### Pasos
+### Instalación
 
 ```bash
-# 1. Clonar repo
+# 1. Clonar el repositorio
 git clone https://github.com/tu-usuario/el-vigilante-scraper.git
 cd el-vigilante-scraper
 
 # 2. Crear entorno virtual
-python3.11 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Configurar variables de entorno
+# 4. Configurar API key
 cp .env.example .env
-nano .env  # Añade tu OPENAI_API_KEY
-```
-
-**Contenido de `.env`**:
-```env
-OPENAI_API_KEY=sk-tu-clave-aqui
-LLM_MODEL=gpt-4o-mini
-LLM_MAX_TOKENS=500
-LLM_TEMPERATURE=0.3
+# Editar .env y añadir: OPENAI_API_KEY=tu-clave-aqui
 ```
 
 ---
 
-## 🚀 Uso del Pipeline
+## 📚 Uso
 
-### 1. Scraping del BOE (sin LLM)
-
-Extrae documentos del BOE y genera metadatos básicos:
+### Flujo Completo (Recomendado)
 
 ```bash
-# Scrape del BOE de hoy (modo dry-run)
-./boe_scraper.py --date today --dry-run
+# 1. Scraper: Descarga PDFs y extrae texto (sin usar IA)
+python3 boe_scraper.py --date 2026-01-27 --limit 5
 
-# Scrape real del BOE de hoy (guarda en JSONL)
-./boe_scraper.py --date today
+# 2. Procesar con IA: Genera resúmenes y análisis
+python3 process_with_llm.py data/jsonl/2026/01/boe-2026-01.jsonl
 
-# Scrape de una fecha específica
-./boe_scraper.py --date 2026-01-27
+# 3. Validar calidad de datos
+python3 validator.py data/jsonl/2026/01/boe-2026-01.jsonl
 
-# Limitar a 10 documentos (para testing)
-./boe_scraper.py --date today --limit 10
+# 4. Generar índices para web (opcional)
+python3 index_generator.py --generate-latest
 ```
 
-**Salida**: `data/jsonl/2026/01/boe-2026-01.jsonl`
+### Comandos Individuales
 
-Cada línea es un JSON con metadatos básicos (sin resumen LLM aún):
-- `id`, `title_original`, `url_oficial`, `date_published`
-- `type` (ley, real_decreto, orden, etc.)
-- `topic_primary` (clasificación heurística)
-- `impact_index` (score 0-100 calculado por heurísticas)
-- `summary_plain_es`: placeholder "[Pendiente de procesar]"
-
----
-
-### 2. Procesamiento con LLM (OpenAI)
-
-**Importante**: Requiere `OPENAI_API_KEY` configurada en `.env`
-
+**Scraper básico:**
 ```bash
-# Procesar un documento de ejemplo (test)
-./llm_processor.py
+# Procesar BOE de hoy
+python3 boe_scraper.py --date today --limit 10
+
+# Fecha específica
+python3 boe_scraper.py --date 2026-01-27
 ```
 
-Este script genera:
-- `summary_plain_es`: Resumen en lenguaje ciudadano (150-300 palabras)
-- `keywords`: 5-8 palabras clave relevantes
-- `affects_to`: A quién afecta (`["autónomos", "empresas", ...]`)
-- `transparency_notes`: Por qué es importante que la ciudadanía lo sepa
-
-**Integración con scraper**:
-
-Para procesar documentos scraped con LLM, necesitas integrar `llm_processor.process_document_with_llm()` en tu flujo. En futuras versiones esto será automático, pero por ahora es un paso manual.
-
-**Ejemplo de integración**:
-
-```python
-from llm_processor import process_document_with_llm
-import json
-
-# Leer JSONL
-with open("data/jsonl/2026/01/boe-2026-01.jsonl", "r") as f:
-    for line in f:
-        doc = json.loads(line)
-        if "[Pendiente de procesar]" in doc.get("summary_plain_es", ""):
-            # Procesar con LLM
-            enriched_doc = process_document_with_llm(doc)
-            # Guardar/actualizar...
-```
-
----
-
-### 3. Validación de Calidad
-
-Valida documentos contra el schema JSON y criterios de calidad:
-
+**Procesamiento con IA:**
 ```bash
-# Validar un archivo JSONL
-./validator.py data/jsonl/2026/01/boe-2026-01.jsonl
-
-# Validación verbose (muestra todos los warnings)
-./validator.py data/jsonl/2026/01/boe-2026-01.jsonl --verbose
+# Procesar archivo JSONL
+python3 process_with_llm.py data/jsonl/2026/01/boe-2026-01.jsonl
 ```
 
-**Salida**: Reporte con:
-- % de documentos válidos (schema)
-- % de documentos con calidad aceptable
-- Score promedio de calidad (0-100)
-- Errores por tipo
-- Warnings (resúmenes demasiado cortos, tecnicismos excesivos, etc.)
-
----
-
-### 4. Generación de Índices para la Web
-
-Genera archivos JSON optimizados para consumir en la web Next.js:
-
+**Validación:**
 ```bash
-# Generar latest.json (últimos 30 días)
-./index_generator.py --generate-latest
-
-# Generar topics.json (todos los documentos agrupados por tema)
-./index_generator.py --generate-topics
-
-# Generar índice mensual específico
-./index_generator.py --generate-monthly 2026-01
-
-# Generar todos los índices
-./index_generator.py --all
+# Validar datos generados
+python3 validator.py data/jsonl/2026/01/boe-2026-01.jsonl
 ```
-
-**Archivos generados**:
-- `data/index/latest.json`: Feed de últimos 30 días (para home de la web)
-- `data/index/topics.json`: Documentos agrupados por tema
-- `data/index/2026-01.json`: Índice completo del mes
 
 ---
 
 ## 📂 Estructura de Datos
 
+### Archivos Generados
+
 ```
 data/
-├── schema/
-│   └── documento-publico-v1.schema.json    # Schema JSON formal
-├── jsonl/
-│   └── 2026/
-│       └── 01/
-│           ├── boe-2026-01.jsonl           # Histórico mes (1 JSON por línea)
-│           └── boe-2026-01-metadata.json   # Stats del mes (futuro)
-├── index/
-│   ├── latest.json                         # Últimos 30 días (web)
-│   ├── 2026-01.json                        # Índice mensual
-│   └── topics.json                         # Agrupado por temas
+├── pdfs/                    # PDFs descargados del BOE
+│   └── 2026/01/
+│       └── boe-2026-01-27-*.pdf
+├── jsonl/                   # Datos procesados
+│   └── 2026/01/
+│       └── boe-2026-01.jsonl
+├── index/                   # Índices para consumir en web
+│   ├── latest.json         # Últimos 30 días
+│   └── topics.json         # Agrupados por tema
 └── cache/
-    └── llm_responses/                      # Caché de respuestas LLM
+    └── llm_responses/      # Caché de IA
 ```
 
----
+### Formato de Datos (JSON)
 
-## 📋 Esquema `DocumentoPublico` (v1.0)
+Cada documento se estructura con estos campos principales:
 
-Cada documento BOE se transforma en un registro JSON con estos campos:
+```json
+{
+  "id": "boe-2026-01-27-acuerdo-56de5cbe",
+  "title_original": "Acuerdo internacional...",
+  "date_published": "2026-01-27",
+  "url_oficial": "https://www.boe.es/...",
+  "pdf_path": "pdfs/2026/01/boe-2026-01-27-acuerdo-56de5cbe.pdf",
+  
+  "summary_plain_es": "Resumen en lenguaje sencillo del documento...",
+  "keywords": ["cooperación", "desarrollo", "OCDE"],
+  "topic_primary": "economía",
+  "affects_to": ["todos_ciudadanos", "empresas"],
+  "transparency_notes": "Es importante porque..."
+}
+```
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | string | Identificador único (ej: `boe-2026-01-27-real-decreto-a3f2`) |
-| `source` | string | Siempre `"BOE"` |
-| `type` | enum | `ley`, `real_decreto`, `orden`, `resolucion`, etc. |
-| `title_original` | string | Título oficial completo del BOE |
-| `date_published` | ISO 8601 | Fecha de publicación oficial |
-| `url_oficial` | string | Enlace permanente al BOE |
-| **`summary_plain_es`** | string | **Resumen en lenguaje ciudadano (150-300 palabras)** |
-| `keywords` | array[string] | 5-8 palabras clave |
-| `topic_primary` | enum | `economía`, `empleo`, `sanidad`, `educación`, etc. |
-| `approved_by` | string | Organismo que aprueba |
-| `affects_to` | array[enum] | `["autónomos", "empresas", "todos_ciudadanos", ...]` |
-| **`impact_index`** | object | `{score: 0-100, reason: "..."}` |
-| `changes_summary` | string | Qué cambia respecto a antes (opcional) |
-| `entry_into_force` | ISO 8601 | Fecha de entrada en vigor |
-| **`transparency_notes`** | string | **Por qué los ciudadanos deben saberlo** |
-| `version` | string | `"1.0"` |
-| `created_at` | ISO 8601 | Timestamp de creación |
-| `updated_at` | ISO 8601 | Timestamp de última actualización |
-
-**Ver schema completo**: `data/schema/documento-publico-v1.schema.json`
+**Ver schema completo:** [`data/schema/documento-publico-v1.schema.json`](data/schema/documento-publico-v1.schema.json)
 
 ---
 
-## 🎨 Filosofía del Proyecto
+## ⚙️ Configuración
 
-> "Que una persona normal pueda entender qué se ha aprobado y cómo le afecta"
+### Variables de Entorno (`.env`)
 
-### Principios Editoriales
+```env
+# OpenAI API Key (OBLIGATORIO)
+OPENAI_API_KEY=sk-tu-clave-aqui
 
-1. **Objetividad**: Presentamos hechos, no opiniones políticas
-2. **Claridad**: Lenguaje comprensible sin sacrificar precisión
-3. **Transparencia**: Siempre enlazamos a fuentes oficiales (BOE)
-4. **Accesibilidad**: Diseño inclusivo, texto para todos
-5. **No sensacionalismo**: Sin clickbait ni alarmismo
-6. **Pedagogía cívica**: Explicamos el "por qué" y el "para qué"
-7. **Apartidismo**: Vigilamos a todos por igual
+# Modelo de IA a usar
+LLM_MODEL=gpt-4o-mini
 
-### Guía de Estilo
+# Tokens máximos por respuesta
+LLM_MAX_TOKENS=1000
 
-**✅ Hacer**:
-- "Esto te afecta si eres autónomo..."
-- "Podrás deducir hasta 2.000€ en..."
-- "Antes solo podías X, ahora también Y"
+# Temperatura (creatividad: 0.0 = preciso, 1.0 = creativo)
+LLM_TEMPERATURE=0.3
+```
 
-**❌ Evitar**:
-- Tecnicismos sin explicar: "disposición derogatoria tercera"
-- Lenguaje partidista: "El Gobierno dice que..."
-- Sensacionalismo: "Escándalo de..."
+### Costes Estimados
+
+Con **gpt-4o-mini**:
+- ~$0.002-0.005 por documento
+- Procesando 10 docs/día: ~$1-2/mes
+- Procesando 100 docs/día: ~$10-15/mes
 
 ---
 
-## 🛠️ Troubleshooting
+## 🛠️ Solución de Problemas
 
 ### Error: `OPENAI_API_KEY not found`
-
-**Solución**: Configura tu API key en `.env`:
+**Solución:** Configurar la API key en el archivo `.env`:
 ```bash
 echo 'OPENAI_API_KEY=sk-tu-clave-aqui' >> .env
 ```
 
-### Error: `Schema file not found`
-
-**Solución**: Asegúrate de que existe `data/schema/documento-publico-v1.schema.json`. Si no existe, el schema se crea automáticamente al instalar el proyecto.
-
-### BOE scraper no encuentra documentos
-
-**Causas posibles**:
-1. El BOE aún no ha publicado el sumario del día (se publica ~8:00 AM)
-2. Cambio en la estructura HTML del BOE → reportar issue en GitHub
-
-**Solución temporal**: Prueba con una fecha anterior:
+### Error: `No module named 'pdfplumber'`
+**Solución:** Instalar dependencias:
 ```bash
-./boe_scraper.py --date 2026-01-27
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### LLM genera resúmenes con tecnicismos
+### El scraper no encuentra documentos
+**Causas posibles:**
+1. El BOE aún no publicó el sumario (se publica ~8:00 AM)
+2. Fecha futura (el BOE solo publica documentos pasados)
+3. Cambio en estructura HTML del BOE
 
-**Solución**: Esto puede ocurrir ocasionalmente. Revisa manualmente los resúmenes con:
+**Solución:** Usar una fecha pasada reciente:
 ```bash
-./validator.py data/jsonl/2026/01/boe-2026-01.jsonl --verbose
+python3 boe_scraper.py --date 2026-01-20
 ```
-
-Los warnings te indicarán qué documentos tienen exceso de jerga técnica.
 
 ---
 
-## 📈 Roadmap
+## 🎨 Principios del Proyecto
 
-### ✅ Fase 1: MVP BOE España (Actual)
+### Neutralidad
+Este proyecto NO toma posiciones políticas. Su único objetivo es hacer accesible información pública ya existente.
 
-- [x] Scraper de BOE (Sección I - Disposiciones generales)1
-- [x] Procesador LLM para resúmenes ciudadanos
-- [x] Validador de schema y calidad
-- [x] Generador de índices JSON
-- [ ] Automatización diaria (GitHub Actions)
+### Transparencia
+- Todo el código es open source
+- Los datos siempre enlazan a fuentes oficiales
+- El procesamiento es auditable y reproducible
 
-### 🔄 Fase 2: Mejora Semántica (Q2 2026)
+### Accesibilidad
+- Lenguaje claro sin tecnicismos innecesarios
+- Explicaciones pedagógicas, no simplificaciones
+- Datos estructurados consumibles por cualquier plataforma
 
-- [ ] Revisión humana de resúmenes (editorial mínimo)
-- [ ] Mejor cálculo de `impact_index` basado en feedback
-- [ ] Búsqueda textual semántica
-- [ ] Sistema de alertas por email
-- [ ] API pública REST
-
-### 🚀 Fase 3: Integración Contratación Pública (Q3-Q4 2026)
-
-- [ ] Scraper de PLACSP (licitaciones públicas)
-- [ ] Matching semántico BOE ↔ licitaciones
-- [ ] Indicador de transparencia en contratación
-- [ ] Web completa Next.js con ambos datasets
+### No Sensacionalismo
+- Presentación objetiva de hechos
+- Sin clickbait ni titulares alarmistas
+- Enfoque educativo, no escandaloso
 
 ---
 
 ## 🤝 Contribuir
 
-Este es un proyecto cívico abierto. Contribuciones bienvenidas:
+Las contribuciones son bienvenidas. Puedes ayudar:
 
-1. **Reporta bugs**: Abre un issue en GitHub
-2. **Mejora prompts LLM**: Si encuentras resúmenes poco claros, propón mejoras
-3. **Valida manualmente**: Comparte feedback sobre la calidad de los resúmenes
-4. **Desarrolla**: Fork + PR con mejoras al código
+1. **Reportando errores:** Abre un [issue en GitHub](https://github.com/tu-usuario/el-vigilante-scraper/issues)
+2. **Mejorando código:** Fork + Pull Request
+3. **Validando resúmenes:** Reporta resúmenes poco claros para mejorar prompts
+4. **Documentando:** Mejora esta documentación
 
-**Código de conducta**: Mantemos un tono respetuoso, apartidista y pedagógico.
+**Código de conducta:** Mantener tono respetuoso, neutral y constructivo.
 
 ---
 
 ## 📄 Licencia
 
-**Código**: MIT License  
-**Datos (JSONL)**: CC BY 4.0 (Atribución)
+- **Código:** MIT License
+- **Datos (JSONL):** CC BY 4.0 (Creative Commons - Atribución)
 
-El contenido original del BOE es público y del Estado Español. Este proyecto solo lo estructura y traduce para mejorar su accesibilidad.
-
----
-
-## 📞 Contacto
-
-- **Proyecto**: El Vigilante
-- **GitHub**: [github.com/elvigilante](https://github.com/elvigilante)
-- **Email**: contacto@elvigilante.org (placeholder)
+Los documentos originales del BOE son de dominio público del Estado Español.
 
 ---
 
-**Nota**: Este es un proyecto MVP en desarrollo activo. La precisión de los resúmenes LLM mejorará con feedback y ajustes iterativos de prompts.
+## 📞 Contacto y Enlaces
 
-**El Vigilante**: Traductor ciudadano del BOE 🇪🇸
-# Ley-Abierta
+- **Repositorio:** [github.com/tu-usuario/el-vigilante-scraper](https://github.com/tu-usuario/el-vigilante-scraper)
+- **Documentación:** Este README
+- **Issues:** [GitHub Issues](https://github.com/tu-usuario/el-vigilante-scraper/issues)
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Versión Actual (v1.0)
+- [x] Scraper de BOE con descarga de PDFs
+- [x] Extracción de texto con pdfplumber
+- [x] Procesamiento con IA (resúmenes automáticos)
+- [x] Validación de calidad de datos
+- [x] Generación de índices JSON
+
+### 🔄 Próximas Versiones
+- [ ] Automatización con GitHub Actions (ejecución diaria)
+- [ ] API REST para consultar datos
+- [ ] Mejoras en clasificación de temas
+- [ ] Soporte para BOEs autonómicos (DOGC, BOJA, etc.)
+- [ ] Sistema de alertas personalizadas
+
+---
+
+**El Vigilante**: Traduciendo burocracia, democratizando información 🇪🇸
