@@ -11,6 +11,8 @@ from pathlib import Path
 from tqdm import tqdm
 from llm_processor import call_llm_json, get_cache_key, save_to_cache, load_from_cache
 
+import argparse
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -22,8 +24,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-INPUT_FILE = Path("data/master_2025.jsonl")
-OUTPUT_FILE = Path("data/master_2025_v2.jsonl")
+# Default paths suitable for testing/default runs, but now overrideable
+DEFAULT_INPUT = Path("data/master_2025.jsonl")
+DEFAULT_OUTPUT = Path("data/master_2025_v2.jsonl")
 
 SYSTEM_PROMPT = """Eres un redactor experto que simplifica lenguaje jurídico para ciudadanos.
 Tu objetivo: Generar un título BREVE, PERIODÍSTICO y DESCRIPTIVO (máximo 12 palabras) para esta ley.
@@ -40,13 +43,13 @@ Ejemplos:
 
 Responde en JSON: {"short_title": "..."}"""
 
-def process_file():
-    if not INPUT_FILE.exists():
-        logger.error(f"Input file not found: {INPUT_FILE}")
+def process_file(input_path: Path, output_path: Path):
+    if not input_path.exists():
+        logger.error(f"Input file not found: {input_path}")
         sys.exit(1)
 
     documents = []
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
+    with open(input_path, "r", encoding="utf-8") as f:
         for line in f:
             if line.strip():
                 documents.append(json.loads(line))
@@ -100,12 +103,17 @@ def process_file():
         updated_docs.append(doc)
 
     # Save output
-    logger.info(f"Saving {len(updated_docs)} documents to {OUTPUT_FILE}")
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    logger.info(f"Saving {len(updated_docs)} documents to {output_path}")
+    with open(output_path, "w", encoding="utf-8") as f:
         for doc in updated_docs:
             f.write(json.dumps(doc, ensure_ascii=False) + "\n")
             
     logger.info("Done!")
 
 if __name__ == "__main__":
-    process_file()
+    parser = argparse.ArgumentParser(description="Generate short titles for laws")
+    parser.add_argument("--input", "-i", type=Path, default=DEFAULT_INPUT, help="Input JSONL file")
+    parser.add_argument("--output", "-o", type=Path, default=DEFAULT_OUTPUT, help="Output JSONL file")
+    
+    args = parser.parse_args()
+    process_file(args.input, args.output)
