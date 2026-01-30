@@ -2,7 +2,7 @@
 .env
 
 # Data (los JSONL se versionan en repo separado público)
-data/jsonl/
+data/pdfs/
 data/index/
 data/cache/
 
