@@ -181,7 +181,7 @@ Responde SOLO con el JSON (sin markdown, sin explicaciones):"""
     if cached_response:
         try:
             result = json.loads(cached_response)
-            logger.info("✓ Using cached LLM response")
+            logger.info("[OK] Using cached LLM response")
             # Update document
             doc["summary_plain_es"] = result.get("summary_plain_es", "")
             doc["keywords"] = result.get("keywords", [])
@@ -206,7 +206,7 @@ Responde SOLO con el JSON (sin markdown, sin explicaciones):"""
         # Save to cache
         save_to_cache(cache_key, user_prompt, json.dumps(result))
         
-        logger.info(f"✓ Document processed: {doc['id']}")
+        logger.info(f"[OK] Document processed: {doc['id']}")
         
     except Exception as e:
         logger.error(f"Failed to process document with LLM: {e}")
