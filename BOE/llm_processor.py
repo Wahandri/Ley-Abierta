@@ -20,7 +20,8 @@ from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Load environment variables
-load_dotenv()
+from pathlib import Path
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 # === CONFIGURATION ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

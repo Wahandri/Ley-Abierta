@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # process_history.sh - Batch process historical years
 # Runs the Streaming ETL for 2023, 2022, and 2021 sequentially
 

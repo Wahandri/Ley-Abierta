@@ -27,7 +27,7 @@ from tqdm import tqdm
 BOE_BASE_URL = "https://www.boe.es"
 USER_AGENT = "ElVigilante/1.0 (Transparencia Ciudadana; +https://github.com/elvigilante)"
 TIMEOUT = 30
-DATA_DIR = Path("./data")
+DATA_DIR = Path("../data")
 JSONL_DIR = DATA_DIR / "jsonl"
 PDF_DIR = DATA_DIR / "pdfs"
 LOGS_DIR = Path("./logs")

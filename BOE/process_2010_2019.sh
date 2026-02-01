@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # process_2010_2019.sh - Batch process years 2010-2019
 # Runs the Streaming ETL for 2019 down to 2010 sequentially
 

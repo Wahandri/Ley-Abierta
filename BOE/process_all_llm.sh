@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # Process all 2025 JSONL files with LLM enrichment
 
 cd /home/wahandri/Documentos/Proyectos/el-vigilante-scraper

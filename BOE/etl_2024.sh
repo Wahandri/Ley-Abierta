@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # etl_2024.sh - Complete ETL pipeline for El Vigilante 2024 Master Database
 
 set -e  # Exit on any error

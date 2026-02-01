@@ -17,7 +17,8 @@ from typing import List, Tuple
 PYTHON_BIN = ".venv/bin/python3"  # Use virtual environment Python
 SCRAPER_SCRIPT = "boe_scraper.py"
 RATE_LIMIT_SECONDS = 0.5  # Rate limiting between days
-LOGS_DIR = Path("./logs")
+DATA_DIR = Path("../data")
+LOG_DIR = Path("../logs")
 
 
 class HarvestStats:

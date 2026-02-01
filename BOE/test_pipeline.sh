@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # El Vigilante - Pipeline Test Script
 # Tests complete workflow: scrape → LLM process → validate → index
 

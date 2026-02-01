@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+#!/bin/bash
 # etl_2024_fast.sh - Hyper-Accelerated ETL pipeline for El Vigilante 2024
 # Helper script to run the pipeline with high concurrency
 

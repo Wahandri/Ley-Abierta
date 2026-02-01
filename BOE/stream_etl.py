@@ -233,10 +233,15 @@ def writer_worker(output_file: Path):
                 rate = count / elapsed if elapsed > 0 else 0
                 print(f"Stats: {count} docs processed. Rate: {rate:.2f} docs/sec. Queues: DL={download_queue.qsize()} LLM={llm_queue.qsize()} WR={writer_queue.qsize()}", end='\r')
 
+DEFAULT_OUTPUT_DIR = Path("../data/jsonl")
+DEFAULT_PDF_DIR = Path("../data/pdfs")
+DEFAULT_LOG_DIR = Path("../logs") # Original line
+load_dotenv(Path(__file__).parent.parent / ".env") # Added line
+
 def main():
     parser = argparse.ArgumentParser(description="Stream ETL Pipeline")
     parser.add_argument("--year", type=int, default=2024)
-    parser.add_argument("--output", type=Path, default=Path("data/master_2024_stream.jsonl"))
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR / "master_2024_stream.jsonl")
     args = parser.parse_args()
     
     print("==================================================")
